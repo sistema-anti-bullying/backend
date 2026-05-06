@@ -51,15 +51,39 @@ export default function ReportForm() {
 
   const handleFileUpload = async (e) => {
     const selectedFiles = Array.from(e.target.files);
+    
+    if (selectedFiles.length === 0) return;
+
     setUploading(true);
     const urls = [];
-    for (const file of selectedFiles) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      urls.push(file_url);
+    
+    try {
+      for (const file of selectedFiles) {
+        try {
+          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          if (file_url) {
+            urls.push(file_url);
+          } else {
+            toast.error(`Erro ao enviar ${file.name}: URL não recebida`);
+          }
+        } catch (fileError) {
+          console.error(`Erro ao enviar arquivo ${file.name}:`, fileError);
+          toast.error(`Erro ao enviar ${file.name}`);
+        }
+      }
+      
+      if (urls.length > 0) {
+        setFiles(prev => [...prev, ...urls]);
+        toast.success(`${urls.length} arquivo(s) enviado(s) com sucesso`);
+      } else {
+        toast.error("Nenhum arquivo foi enviado com sucesso");
+      }
+    } catch (error) {
+      console.error("Erro na função de upload:", error);
+      toast.error("Erro ao processar upload de arquivos");
+    } finally {
+      setUploading(false);
     }
-    setFiles(prev => [...prev, ...urls]);
-    setUploading(false);
-    toast.success(`${selectedFiles.length} arquivo(s) enviado(s)`);
   };
 
   const handleSubmit = async () => {
@@ -67,30 +91,39 @@ export default function ReportForm() {
       toast.error("Preencha o tipo de bullying e a descrição.");
       return;
     }
+    
     setSubmitting(true);
-    const protocol = generateProtocol();
-    const data = {
-      protocol,
-      is_anonymous: form.is_anonymous,
-      victim_name: form.prefer_not_victim ? "Prefiro não informar" : form.victim_name,
-      aggressor_name: form.aggressor_name,
-      class_grade: form.class_grade,
-      incident_date: form.incident_date,
-      incident_location: form.incident_location,
-      bullying_type: form.bullying_type,
-      description: form.description,
-      has_witnesses: form.has_witnesses,
-      witness_names: form.witness_names,
-      reporter_name: form.is_anonymous ? "" : form.reporter_name,
-      reporter_email: form.is_anonymous ? "" : form.reporter_email,
-      reporter_phone: form.is_anonymous ? "" : form.reporter_phone,
-      status: "recebida",
-      urgency: "media",
-      attachment_urls: files,
-    };
-    await base44.entities.Report.create(data);
-    setResult(protocol);
-    setSubmitting(false);
+    
+    try {
+      const protocol = generateProtocol();
+      const data = {
+        protocol,
+        is_anonymous: form.is_anonymous,
+        victim_name: form.prefer_not_victim ? "Prefiro não informar" : form.victim_name,
+        aggressor_name: form.aggressor_name,
+        class_grade: form.class_grade,
+        incident_date: form.incident_date,
+        incident_location: form.incident_location,
+        bullying_type: form.bullying_type,
+        description: form.description,
+        has_witnesses: form.has_witnesses,
+        witness_names: form.witness_names,
+        reporter_name: form.is_anonymous ? "" : form.reporter_name,
+        reporter_email: form.is_anonymous ? "" : form.reporter_email,
+        reporter_phone: form.is_anonymous ? "" : form.reporter_phone,
+        status: "recebida",
+        urgency: "media",
+        attachment_urls: files,
+      };
+      
+      await base44.entities.Report.create(data);
+      setResult(protocol);
+    } catch (error) {
+      console.error("Erro ao enviar denúncia:", error);
+      toast.error("Erro ao enviar denúncia. Tente novamente.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const copyProtocol = () => {
