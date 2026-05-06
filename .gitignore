@@ -27,5 +27,8 @@ dist-ssr
 *.sln
 *.sw?
 
+# Backend (separate repository)
+/backend
+
 .env
 .vite
